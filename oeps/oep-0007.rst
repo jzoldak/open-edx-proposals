@@ -38,10 +38,10 @@ Rationale
 =========
 
     * Python 2 will only receive support from the python core devs until 2020.
-    * Major language performance work is being done on Python 3 only.[citation
-      required]
     * New features are being made available on python 3 first, and are
       sometimes backported to Python 2.
+    * Major language performance work is being done on Python 3 only.[citation
+      required]
     * Almost all major libraries now support python 3.
     * We can approach the problem now at a relaxed pace, or deal with it in a
       panic later, diverting valuable resources from other important work.
@@ -68,15 +68,18 @@ repositories has been migrated.
 Setting Policy
 --------------
 
-All new python 2 code should be written to be compatible with python 3.  We
-will follow the compatibility guidelines at
+All new python 2 code should be written to be compatible with python 3.
+We will follow the compatibility guidelines at
 http://python-future.org/compatible_idioms.html.  (FIXME: We should prefer six)
 
-This includes using the __future__ imports to regularize some behaviors that
-differ by default between python 2 and 3, such as `from __future__ import
-absolute_imports` to forbid the use of implicit relative imports and `from
-__future__ import print_function` to make print a function instead of a
-statement. 
+All files should have the main `__future__` imports at the top to regularize
+some behaviors that differ by default between python 2 and 3. `from
+__future__ import absolute_import` forbid the use of implicit relative
+imports and `from __future__ import print_function` to make print a function
+instead of a statement.  `from __future__ import division` will make
+single-slash division (`a / b`) always perform floating point division, and
+double-slash division (`a // b`) always truncate down.
+
 
 Text handling is the largest area of difficulty in porting python.  Where
 possible, we will use unambiguous unicode or byte literals.  In those cases
@@ -85,17 +88,41 @@ require byte strings in python 2 and unicode strings in python 3, we should
 isolate the need for ambiguity as much as possible.  Type checking libraries
 like PyContracts (already used in edx-platform) or typing (a backport of the
 type hinting system introduced in python 3.5) can help us ensure that callers
-are using the appropriate variety of string. Because of the difficulty in
-mentally context switching between code that uses unicode-by-default strings,
-and bytes-by-default strings in a single python 2 codebase, we do not advocate
-the use of `from __future__ import unicode_literals`, but instead recommend
-using explicit `u'unicode'` and `b'byte'` literals throughout. Bare
-native-string literals should be used sparingly, and explicitly called out as
-intentional usages, whether with the
+are using the appropriate variety of string.
+
+[OPTION 1]
+
+Because of the difficulty in mentally context switching between code that uses
+unicode-by-default strings, and bytes-by-default strings in a single python 2
+codebase, we do not advocate the use of `from __future__ import
+unicode_literals`, but instead recommend using explicit `u'unicode'` and
+`b'byte'` literals throughout. Bare native-string literals should be used
+sparingly, and explicitly called out as intentional usages, whether with the
+
+[OPTION 2]
+
+In order to write code that looks as much like native python 3 as possible, we
+advocate the use of `from __future__ import unicode_literals`, which makes bare
+string literals like `'this'` create text strings (`unicode` objects), while
+bytestrings (`bytes` objects) are created with b-prefixed string literals, such
+as `b'this'`.  Native `str` objects do not exist in this system, but have wildly
+inconsistent behavior anyway.  If they are needed for some reason, they should
+be created as unicode objects and explicitly encoded for python 2.
+
+[END OPTIONS]
+
+The `unicode()` and `str()` constructors should be replaced by `six.text_type()`
+and `six.binary_type()` respectively.
+
+`six` has wrapper functions for most other incompatibilities, as well as imports
+to normalize standard library imports.  If useful tools are missing from `six`,
+we can create our own wrapper functions, but should consider submitting them
+upstream to the six project to benefit other teams, if appropriate.
 
 All greenfield python projects should be written using python 3 unless a
 compelling reason (such as incompatible support libraries with no reasonable
-alternative available) compels us to stick with python 2. 
+alternative available) compels us to stick with python 2.  The exception to
+this is new library code that needs to support both python 2 and 3.
 
 The eventual goal is for all of our services to be deployed under python 3 or
 replaced by newer services.  Open source libraries we maintain that are
@@ -116,15 +143,15 @@ incompatibilities during code reviews.  Additionally, we will host regular
 Python 3 office hours to help answer questions and troubleshoot problems that
 arise during migration.
 
-Appropriate tooling will help Tests should be configured to run under both
+Appropriate tooling will help.  Tests should be configured to run under both
 python 2 or 3 (tox helps with this).  As it would double the cost of running
 tests to run both all the time, we may only want to enable Python 3 tests in
 the CI environment for repos that are actively being migrated.  We still want
 to ensure that python 3 compatibility is improving on other projects, so a
 lightweight metric that can be run every time would also be useful, such as
-running pylint checks under python 3.  Making these checks mandatory in a
-similar way to our current quality will ensure that compatibility is improving,
-and reduces future workloads.
+running pylint with the `caniusepython3` extension.  Making these checks
+mandatory in a similar way to our current quality will ensure that
+compatibility is improving (TODO: timeline for this?).
 
 Migrating Code
 --------------
@@ -133,7 +160,7 @@ We should be able to migrate individual applications to python 3 independently.
 To begin with, we should pilot the process using a relatively small (but
 complex enough to provide useful information) IDA.  As we go, we will document
 the process, find pain points, figure out ways of dealing with them, and
-continue to improve our process. 
+continue to improve our process.
 
 Order of migrations
 -------------------
@@ -178,7 +205,7 @@ Once a project has been converted to python 3 and deployed, and partners no
 longer need the python 2 version supported, we will deprecating the python 2
 version of the project. The first step is to document that the python 2 version
 is no longer supported.  Then we can stop testing against python 2, and then we
-can begin cleaning out compatibility code from the code base. 
+can begin cleaning out compatibility code from the code base.
 
 Open source libraries we maintain (that are useful beyond their integration
 with our own projects) should continue to support python 2 until python 2 is
